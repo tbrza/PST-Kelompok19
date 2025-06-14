@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Persebaran SMP di Kota Yogyakarta</title>
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.9.2/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.9.2/mapbox-gl.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e7f1 100%);
+            color: #2c3e50;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 320px;
+            background: white;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #4361c9 0%, #3a56b5 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 0.9rem;
+            font-weight: 400;
+            opacity: 0.9;
+        }
+
+        .search-container {
+            padding: 15px;
+            background: #f8f9ff;
+            border-bottom: 1px solid #e6ecff;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e6ff;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: #4361c9;
+            box-shadow: 0 0 0 3px rgba(67, 97, 201, 0.2);
+        }
+
+        .listings {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+
+        .listings .item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .listings .item:hover {
+            background: #f8fbff;
+        }
+
+        .listings .item.active {
+            background: #edf3ff;
+            border-left: 4px solid #4361c9;
+        }
+
+        .listings .item .title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .listings .item .address {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* Map Styles */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Controls */
+        .controls-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: white;
+            border-radius: 50%;
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 5;
+            transition: all 0.3s;
+        }
+
+        .controls-toggle:hover {
+            transform: rotate(30deg);
+            background: #f0f4ff;
+        }
+
+        .controls-toggle i {
+            font-size: 20px;
+            color: #4361c9;
+        }
+
+        #controls-container {
+            position: absolute;
+            top: 70px;
+            right: 15px;
+            width: 300px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            z-index: 5;
+            padding: 20px;
+            transform: translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        #controls-container.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .controls-header h3 {
+            font-size: 1.2rem;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls-header button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            color: #777;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .controls-header button:hover {
+            background: #f8f9ff;
+            color: #4361c9;
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 5px;
+            margin-bottom: 15px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            background: white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .control-group input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e6ff;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .instructions {
+            background: #f8f9ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 13px;
+            color: #5a6d8a;
+            line-height: 1.6;
+        }
+
+        .instructions p {
+            margin-bottom: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4361c9 0%, #3a56b5 100%);
+            color: white;
+            flex: 2;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 201, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f0f4ff;
+            color: #4361c9;
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e6ff;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+        }
+
+        .coordinate-display {
+            background: #f8f9ff;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #5a6d8a;
+        }
+
+        .route-info {
+            background: #e6f7ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+            line-height: 1.6;
+        }
+
+        .route-info.active {
+            display: block;
+        }
+
+        .route-info div {
+            margin-bottom: 5px;
+        }
+
+        /* Marker Styles */
+        .marker {
+            display: block;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+
+        .route-point-marker {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .start-marker {
+            background-color: #4CAF50;
+        }
+
+        .end-marker {
+            background-color: #F44336;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+            }
+            
+            .map-container {
+                height: 60vh;
+            }
+            
+            #controls-container {
+                top: auto;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%) translateY(20px);
+                width: 90%;
+            }
+            
+            #controls-container.active {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c9e0;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8b1d1;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>
+                    <i class="fas fa-school"></i>
+                    Peta Persebaran SMP di Kota Yogyakarta
+                </h1>
+                <h2>by Kelompok 19 | Tabriza, Nurfitri, Xenia</h2>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" id="search-school" placeholder="Cari sekolah...">
+            </div>
+            
+            <div id="listings" class="listings"></div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map" class="map"></div>
+            
+            <div class="controls-toggle" id="controls-toggle">
+                <i class="fas fa-cog"></i>
+            </div>
+            
+            <div id="controls-container">
+                <div class="controls-header">
+                    <h3><i class="fas fa-tools"></i> Kontrol Peta</h3>
+                    <button id="close-controls">&times;</button>
+                </div>
+                
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="radius">Radius</button>
+                    <button class="tab-button" data-tab="route">Rute</button>
+                </div>
+                
+                <!-- Panel Radius -->
+                <div id="radius-control">
+                    <div class="control-group">
+                        <label for="radius">Radius (km):</label>
+                        <input type="number" id="radius" value="3" min="0.5" max="10" step="0.5">
+                    </div>
+                    
+                    <div class="instructions">
+                        <p><strong>Petunjuk:</strong></p>
+                        <p>1. Klik tombol "Tentukan Pusat Radius"</p>
+                        <p>2. Klik di peta untuk menentukan titik pusat</p>
+                        <p>3. Radius akan muncul secara otomatis</p>
+                    </div>
+                    
+                    <div class="coordinate-display" id="radius-coords">
+                        Titik pusat belum dipilih
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="add-radius-center">
+                            <i class="fas fa-map-marker-alt"></i> Tentukan Pusat Radius
+                        </button>
+                        <button class="btn btn-danger" id="clear-radius">
+                            <i class="fas fa-trash"></i> Hapus
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Panel Rute -->
+                <div id="route-control" style="display:none">
+                    <div class="control-group">
+                        <label>Titik Awal:</label>
+                        <div class="coordinate-display" id="start-coords-display">Belum dipilih</div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Titik Akhir:</label>
+                        <div class="coordinate-display" id="end-coords-display">Belum dipilih</div>
+                    </div>
+                    
+                    <div class="instructions">
+                        <p><strong>Petunjuk:</strong></p>
+                        <p>1. Klik tombol "Tentukan Titik Awal"</p>
+                        <p>2. Klik di peta untuk menentukan titik awal</p>
+                        <p>3. Ulangi untuk titik akhir</p>
+                        <p>4. Rute akan muncul secara otomatis</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-secondary" id="select-start-point">
+                            <i class="fas fa-map-marker"></i> Titik Awal
+                        </button>
+                        <button class="btn btn-secondary" id="select-end-point">
+                            <i class="fas fa-flag"></i> Titik Akhir
+                        </button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="calculate-route">
+                            <i class="fas fa-route"></i> Tampilkan Rute
+                        </button>
+                        <button class="btn btn-danger" id="clear-route">
+                            <i class="fas fa-times"></i> Hapus
+                        </button>
+                    </div>
+                    
+                    <div class="route-info" id="route-info">
+                        <div><strong>Jarak:</strong> <span id="route-distance">-</span></div>
+                        <div><strong>Durasi:</strong> <span id="route-duration">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data sekolah
+        const landmarks = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 1 Yogyakarta",
+                        "english_name": "SMP Negeri 1 Yogyakarta",
+                        "address": "Jl. Cik Di Tiro No.29, Terban, Kec. Gondokusuman, Kota Yogyakarta",
+                        "url": "https://smpn1yogyakarta.sch.id/",
+                        "height_in_m": 63,
+                        "gambar": "https://sdn01kotasolok.com/wp-content/uploads/2025/01/SMP-Terbaik-di-Yogyakarta-Tahun-2025.png",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/8068/8068017.png",
+                        "color": "#4361C9"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.376170240365,
+                            -7.77665686006426
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 2 Yogyakarta",
+                        "english_name": "SMP Negeri 2 Yogyakarta",
+                        "address": "Jl. Panembahan Senopati No.28-30, Prawirodirjan, Kec. Gondomanan, Kota Yogyakarta",
+                        "url": "https://www.smpn2yogya.sch.id/",
+                        "height_in_m": 63,
+                        "gambar": "https://i1291.photobucket.com/albums/b558/Kekunaan/Yogyakarta/DSCF3469_zpspvm7o0hj.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/9921/9921099.png",
+                        "color": "#FF6B6B"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.367789,
+                            -7.8019347
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 3 Yogyakarta",
+                        "english_name": "SMP Negeri 3 Yogyakarta",
+                        "address": "Jl. Pajeksan No.18, Ngupasan, Gedong Tengen, Kota Yogyakarta",
+                        "url": "https://smpn3yk.sch.id/",
+                        "gambar": "https://cdn-1.timesmedia.co.id/images/2022/10/21/SMPN-3-Yogyakarta.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/3841/3841715.png",
+                        "color": "#4ECDC4"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.3646005,
+                            -7.7953769
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 4 Yogyakarta",
+                        "english_name": "SMP Negeri 4 Yogyakarta",
+                        "address": "Jl. Hayam Wuruk No.18, RT.41/RW.11, Bausasran, Kec. Danurejan, Kota Yogyakarta",
+                        "url": "https://smpn4yogyakarta.sch.id/",
+                        "gambar": "https://media.suara.com/pictures/970x544/2020/04/07/22404-smpn-4-yogyakarta.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/8068/8068184.png",
+                        "color": "#FFD166"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.3728933,
+                            -7.795127800000
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 5 Yogyakarta",
+                        "english_name": "SMP Negeri 5 Yogyakarta",
+                        "address": "Jl. Wardhani No.1, Kotabaru, Kec. Gondokusuman, Kota Yogyakarta",
+                        "url": "https://smpn5yogyakarta.sch.id/",
+                        "gambar": "https://lh3.googleusercontent.com/p/AF1QipMLPGLA2q-EfmiSMbWwK4xSO8e2O1b9RoVyZV8x=s1134-k-no",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/9260/9260313.png",
+                        "color": "#6A0572"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.375687400000,
+                            -7.7872232
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 6 Yogyakarta",
+                        "english_name": "SMP Negeri 6 Yogyakarta",
+                        "address": "Jl. R.W. Monginsidi No.1, Cokrodiningratan, Kec. Jetis, Kota Yogyakarta",
+                        "url": "http://www.smpn6yogya.sch.id/",
+                        "gambar": "https://ik.trn.asia/uploads/2022/01/1642570701815.jpeg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/10469/10469714.png",
+                        "color": "#1A936F"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.3672807,
+                            -7.778405
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 7 Yogyakarta",
+                        "english_name": "SMP Negeri 7 Yogyakarta",
+                        "address": "Jl. Wiratama, Tegalrejo, Yogyakarta City",
+                        "url": "http://smpn7yogyakarta.sch.id/",
+                        "gambar": "https://live.staticflickr.com/3259/2608093710_24f9de0354_b.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/7197/7197265.png",
+                        "color": "#F46036"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.3507587,
+                            -7.7912443
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 8 Yogyakarta",
+                        "english_name": "SMP Negeri 8 Yogyakarta",
+                        "address": "Jl. Kahar Muzakir No.2, Kel, Terban, Kec. Gondokusuman, Kota Yogyakarta",
+                        "url": "http://www.smpn8jogja.sch.id/",
+                        "gambar": "https://nusagama.com/wp-content/uploads/2016/09/SMPN-8-Jogja-Gerbang.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/9494/9494632.png",
+                        "color": "#5B85AA"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.3731776,
+                            -7.7818089
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 9 Yogyakarta",
+                        "english_name": "SMP Negeri 9 Yogyakarta",
+                        "address": "Jl. Ngeksigondo No.30, Prenggan, Kec. Kotagede, Kota Yogyakarta",
+                        "url": "http://smpn9yogyakarta.sch.id/",
+                        "gambar": "https://lesprivatjogja.com/wp-content/uploads/2017/04/SMP-9-Yogyakarta.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/9260/9260399.png",
+                        "color": "#C73E1D"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.3978143,
+                            -7.8198999
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 10 Yogyakarta",
+                        "english_name": "SMP Negeri 10 Yogyakarta",
+                        "address": "Jl. Tritunggal No.2, Sorosutan, Kec. Umbulharjo, Kota Yogyakarta",
+                        "url": "https://smpn10yogya.sch.id/",
+                        "height_in_m": 19.8,
+                        "gambar": "https://media.suara.com/pictures/970x544/2020/04/07/22404-smpn-4-yogyakarta.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/6912/6912962.png",
+                        "color": "#3C91E6"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.375357496452,
+                            -7.82224229875375
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 11 Yogyakarta",
+                        "english_name": "SMP Negeri 11 Yogyakarta",
+                        "description": "DAYA TAMPUNG",
+                        "address": "Jl. HOS Cokroaminoto No.127, Tegalrejo, Kec. Tegalrejo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55244",
+                        "year_build": 1952,
+                        "city": "Surabaya",
+                        "type": "monument",
+                        "url": "http://smpn11yogya.sch.id",
+                        "height_in_m": 41,
+                        "gambar": "https://cdn-sekolah.annibuku.com/20403268/1.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/8921/8921486.png",
+                        "color": "#DF3CE6"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.353323,
+                            -7.792732
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 12 Yogyakarta",
+                        "english_name": "SMP Negeri 12 Yogyakarta",
+                        "description": "Jam Gadang is a clock tower and major landmark and tourist attraction in the city of Bukittinggi, West Sumatra, Indonesia. It is located in the centre of the city, near the main market, Pasar Ateh. It has large clocks on each face.",
+                        "address": "Jl. Tentara Pelajar No.9, Bumijo, Kec. Jetis, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55272",
+                        "year_build": 1926,
+                        "city": "Bukittinggi",
+                        "type": "clock_tower",
+                        "url": "http://smpn12jogja.sch.id/",
+                        "height_in_m": 26,
+                        "gambar": "https://nusagama.com/wp-content/uploads/2016/09/SMPN-12-Yogyakarta-Gerbang.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/8067/8067973.png",
+                        "color": "#E6CD3C"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.360071307949,
+                            -7.78585550901778
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 13 Yogyakarta",
+                        "english_name": "SMP Negeri 13 Yogyakarta",
+                        "description": "Kahayan bridge is 640 metres long and 9 meters wide and in the centre, directly above the fairway of Kahayan River, is a 150 metres long and 36 metres high red arch. This bridge is not only used for transportation but it is also a popular place to hang out by locals, overseeing the activities on Kahayan River like fishers, rowing athletes practicing near the bridge, boats passing or just enjoying the view. Many locals also sell their goods on the bridge.",
+                        "address": "Jl. Minggiran, Suryodiningratan, Kec. Mantrijeron, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55141",
+                        "year_build": 1995,
+                        "city": "Palangkaraya",
+                        "type": "bridge",
+                        "url": "http://smpn13-yog.sch.id/",
+                        "height_in_m": 36,
+                        "gambar": "https://warta.jogjakota.go.id/assets/instansi/warta/article/20200522181854.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/6913/6913015.png",
+                        "color": "#3CE656"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.36024924315664, -7.819549960597175
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 14 Yogyakarta",
+                        "english_name": "SMP Negeri 14 Yogyakarta",
+                        "description": "Lawang Sewu (\"Thousand Doors\") is a landmark in Semarang, Central Java, Indonesia, built as the headquarters of the Dutch East Indies Railway Company. The name comes from its design, with numerous doors and arcs. The building has about 600 large windows.",
+                        "address": "6975+7WF, Jl. Tentara Pelajar, Bumijo, Kec. Jetis, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55231",
+                        "year_build": 1907,
+                        "city": "Semarang",
+                        "type": "building",
+                        "url": "https://smpn14jogja.sch.id/",
+                        "height_in_m": "",
+                        "gambar": "https://cdn-sekolah.annibuku.com/20403271/1.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/6913/6913028.png",
+                        "color": "#3CE6DF"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.35978698635995, -7.786800496641939
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 15 Yogyakarta",
+                        "english_name": "SMP Negeri 15 Yogyakarta",
+                        "description": "This tower is located in Limboto, the capital of Gorontalo Regency. The Keagungan Tower has 5 (five) floors. A modern and comfortable auditorium is available on the first floor, for meeting and show purpose.",
+                        "address": "Jl. Tegal Lempuyangan No.61, Bausasran, Kec. Danurejan, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55211",
+                        "year_build": 2001,
+                        "city": "Gorontalo",
+                        "type": "monument",
+                        "url": "https://www.smpn15yk.sch.id/",
+                        "height_in_m": "",
+                        "gambar": "https://www.smpn15yk.sch.id/wp-content/uploads/2022/03/SARPRAS-2025-3.jpeg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/9921/9921079.png",
+                        "color": "#100E0E"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.376210682537,
+                            -7.79099324809355
+                        ]
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "id_name": "SMP Negeri 16 Yogyakarta",
+                        "english_name": "SMP Negeri 16 Yogyakarta",
+                        "description": "Maimun Palace or Maimoon Palace is an istana of the Sultanate of Deli and a well-known landmark in Medan, the capital city of North Sumatra, Indonesia. Today, it serves as a museum.",
+                        "address": "Jl. Nagan Lor No.8, Patehan, Kecamatan Kraton, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55133",
+                        "year_build": 1898,
+                        "city": "Medan",
+                        "type": "building",
+                        "url": "http://smpn16yogyakarta.sch.id/",
+                        "height_in_m": "",
+                        "gambar": "https://smpn16yogyakarta.sch.id/media_library/posts/post-image-1608132540254.jpg",
+                        "icon": "https://cdn-icons-png.flaticon.com/128/6912/6912971.png",
+                        "color": "#B5ADA1"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                            110.359192730404,
+                            -7.81129053828964
+                        ]
+                    }
+                },
+            ]
+        };
+
+// Data daya tampung
+const dayaTampungPerSekolah = {
+  "SMP Negeri 1 Yogyakarta": { prestasi_bibit_unggul: 26, radius: 28, disabilitas: 12, perpindahan: 12, afirmasi_sejahtera: 28, zonasi: 130, prestasi_luar: 36, total: 252 },
+  "SMP Negeri 2 Yogyakarta": { prestasi_bibit_unggul: 22, radius: 43, disabilitas: 10, perpindahan: 10, afirmasi_sejahtera: 25, zonasi: 96, prestasi_luar: 22, total: 228 },
+  "SMP Negeri 3 Yogyakarta": { prestasi_bibit_unggul: 21, radius: 25, disabilitas: 11, perpindahan: 11, afirmasi_sejahtera: 20, zonasi: 109, prestasi_luar: 21, total: 218 },
+  "SMP Negeri 4 Yogyakarta": { prestasi_bibit_unggul: 16, radius: 24, disabilitas: 9, perpindahan: 9, afirmasi_sejahtera: 18, zonasi: 75, prestasi_luar: 16, total: 167 },
+  "SMP Negeri 5 Yogyakarta": { prestasi_bibit_unggul: 32, radius: 35, disabilitas: 16, perpindahan: 16, afirmasi_sejahtera: 35, zonasi: 166, prestasi_luar: 32, total: 332 },
+  "SMP Negeri 6 Yogyakarta": { prestasi_bibit_unggul: 23, radius: 33, disabilitas: 11, perpindahan: 11, afirmasi_sejahtera: 25, zonasi: 100, prestasi_luar: 23, total: 226 },
+  "SMP Negeri 7 Yogyakarta": { prestasi_bibit_unggul: 21, radius: 25, disabilitas: 10, perpindahan: 10, afirmasi_sejahtera: 20, zonasi: 91, prestasi_luar: 21, total: 198 },
+  "SMP Negeri 8 Yogyakarta": { prestasi_bibit_unggul: 32, radius: 35, disabilitas: 16, perpindahan: 16, afirmasi_sejahtera: 35, zonasi: 167, prestasi_luar: 32, total: 333 },
+  "SMP Negeri 9 Yogyakarta": { prestasi_bibit_unggul: 23, radius: 52, disabilitas: 10, perpindahan: 10, afirmasi_sejahtera: 25, zonasi: 97, prestasi_luar: 23, total: 240 },
+  "SMP Negeri 10 Yogyakarta": { prestasi_bibit_unggul: 23, radius: 52, disabilitas: 10, perpindahan: 10, afirmasi_sejahtera: 25, zonasi: 104, prestasi_luar: 23, total: 247 },
+  "SMP Negeri 11 Yogyakarta": { prestasi_bibit_unggul: 13, radius: 20, disabilitas: 8, perpindahan: 8, afirmasi_sejahtera: 15, zonasi: 67, prestasi_luar: 13, total: 144 },
+  "SMP Negeri 12 Yogyakarta": { prestasi_bibit_unggul: 20, radius: 31, disabilitas: 10, perpindahan: 10, afirmasi_sejahtera: 21, zonasi: 97, prestasi_luar: 20, total: 209 },
+  "SMP Negeri 13 Yogyakarta": { prestasi_bibit_unggul: 6, radius: 11, disabilitas: 4, perpindahan: 4, afirmasi_sejahtera: 7, zonasi: 35, prestasi_luar: 6, total: 73 },
+  "SMP Negeri 14 Yogyakarta": { prestasi_bibit_unggul: 13, radius: 20, disabilitas: 8, perpindahan: 8, afirmasi_sejahtera: 15, zonasi: 68, prestasi_luar: 13, total: 145 },
+  "SMP Negeri 15 Yogyakarta": { prestasi_bibit_unggul: 34, radius: 40, disabilitas: 18, perpindahan: 18, afirmasi_sejahtera: 41, zonasi: 176, prestasi_luar: 34, total: 361 },
+  "SMP Negeri 16 Yogyakarta": { prestasi_bibit_unggul: 22, radius: 46, disabilitas: 10, perpindahan: 10, afirmasi_sejahtera: 26, zonasi: 98, prestasi_luar: 22, total: 234 }
+};
+
+        // Data passing grade
+        const passingGradePerSekolah = {
+          "SMP Negeri 1 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 262.26, tertinggi: 287.97, rata: 266.31 },
+            radius: { terendah: 193, tertinggi: 258, rata: 238 },
+            disabilitas: { terendah: 658, tertinggi: 2395, rata: 1717 },
+            perpindahan: { terendah: 178.34, tertinggi: 208.21, rata: 197.28 },
+            afirmasi_sejahtera: { terendah: 189.47, tertinggi: 260.55, rata: 211.93 },
+            zonasi: { terendah: 246.10, tertinggi: 263.14, rata: 250.74 },
+            prestasi_luar: { terendah: 268.84, tertinggi: 273.24, rata: 271.15 }
+          },
+          "SMP Negeri 2 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 247.97, tertinggi: 268.81, rata: 256.17 },
+            radius: { terendah: 82, tertinggi: 406, rata: 335 },
+            disabilitas: { terendah: 365, tertinggi: 1189, rata: 720 },
+            perpindahan: { terendah: 138.93, tertinggi: 213.71, rata: 181.88 },
+            afirmasi_sejahtera: { terendah: 216.16, tertinggi: 246.81, rata: 227.05 },
+            zonasi: { terendah: 237.62, tertinggi: 263.98, rata: 244.49 },
+            prestasi_luar: { terendah: 257.75, tertinggi: 268.54, rata: 261.26 }
+          },
+           "SMP Negeri 3 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 154.64, tertinggi: 217.14, rata: 185.38 },
+            radius: { terendah: 87, tertinggi: 525, rata: 321 },
+            disabilitas: { terendah: 313, tertinggi: 1255, rata: 818 },
+            perpindahan: { terendah: 0.00, tertinggi: 0.00, rata: 0.00 },
+            afirmasi_sejahtera: { terendah: 185.72, tertinggi: 197.55, rata: 189.30 },
+            zonasi: { terendah: 195.82, tertinggi: 220.62, rata: 203.16 },
+            prestasi_luar: { terendah: 227.42, tertinggi: 238.97, rata: 230.38 }
+          },
+          "SMP Negeri 4 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 236.67, tertinggi: 250.71, rata: 242.72 },
+            radius: { terendah: 61, tertinggi: 213, rata: 124 },
+            disabilitas: { terendah: 249, tertinggi: 1814, rata: 739 },
+            perpindahan: { terendah: 147.68, tertinggi: 159.74, rata: 153.71 },
+            afirmasi_sejahtera: { terendah: 205.37, tertinggi: 236.94, rata: 215.82 },
+            zonasi: { terendah: 229.02, tertinggi: 248.82, rata: 234.41 },
+            prestasi_luar: { terendah: 255.19, tertinggi: 270.62, rata: 258.31 }
+          },
+          "SMP Negeri 5 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 275.83, tertinggi: 294.17, rata: 280.79 },
+            radius: { terendah: 196, tertinggi: 360, rata: 239 },
+            disabilitas: { terendah: 1104, tertinggi: 2520, rata: 2030 },
+            perpindahan: { terendah: 209.94, tertinggi: 282.33, rata: 246.88 },
+            afirmasi_sejahtera: { terendah: 183.06, tertinggi: 251.93, rata: 209.48 },
+            zonasi: { terendah: 259.70, tertinggi: 299.77, rata: 271.27 },
+            prestasi_luar: { terendah: 275.80, tertinggi: 299.07, rata: 283.74 }
+          },
+          "SMP Negeri 6 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 245.47, tertinggi: 260.60, rata: 252.51 },
+            radius: { terendah: 117, tertinggi: 244, rata: 180 },
+            disabilitas: { terendah: 117, tertinggi: 447, rata: 268 },
+            perpindahan: { terendah: 171.38, tertinggi: 252.14, rata: 194.66 },
+            afirmasi_sejahtera: { terendah: 192.10, tertinggi: 244.69, rata: 209.72 },
+            zonasi: { terendah: 233.90, tertinggi: 254.50, rata: 240.99 },
+            prestasi_luar: { terendah: 261.07, tertinggi: 268.66, rata: 265.23 }
+          },
+          "SMP Negeri 7 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 221.90, tertinggi: 259.88, rata: 236.55 },
+            radius: { terendah: 127, tertinggi: 265, rata: 196 },
+            disabilitas: { terendah: 361, tertinggi: 1283, rata: 859 },
+            perpindahan: { terendah: 113.83, tertinggi: 226.84, rata: 185.05 },
+            afirmasi_sejahtera: { terendah: 201.42, tertinggi: 245.85, rata: 214.94 },
+            zonasi: { terendah: 220.59, tertinggi: 250.37, rata: 228.12 },
+            prestasi_luar: { terendah: 250.62, tertinggi: 276.22, rata: 256.96 }
+          },
+          "SMP Negeri 8 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 269.29, tertinggi: 282.62, rata: 274.18 },
+            radius: { terendah: 13, tertinggi: 351, rata: 308 },
+            disabilitas: { terendah: 133, tertinggi: 1211, rata: 550 },
+            perpindahan: { terendah: 208.40, tertinggi: 272.45, rata: 234.34 },
+            afirmasi_sejahtera: { terendah: 196.05, tertinggi: 269.43, rata: 225.79 },
+            zonasi: { terendah: 254.79, tertinggi: 299.29, rata: 262.57 },
+            prestasi_luar: { terendah: 272.63, tertinggi: 288.06, rata: 276.34 }
+          },
+          "SMP Negeri 9 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 252.86, tertinggi: 278.93, rata: 261.96 },
+            radius: { terendah: 114, tertinggi: 459, rata: 308 },
+            disabilitas: { terendah: 625, tertinggi: 1466, rata: 1111 },
+            perpindahan: { terendah: 127.02, tertinggi: 259.35, rata: 197.46 },
+            afirmasi_sejahtera: { terendah: 207.41, tertinggi: 253.15, rata: 225.69 },
+            zonasi: { terendah: 239.07, tertinggi: 274.69, rata: 247.67 },
+            prestasi_luar: { terendah: 268.09, tertinggi: 276.87, rata: 268.09 }
+          },
+          "SMP Negeri 10 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 211.07, tertinggi: 249.93, rata: 261.96 },
+            radius: { terendah: 150, tertinggi: 614, rata: 465 },
+            disabilitas: { terendah: 384, tertinggi: 816, rata: 484 },
+            perpindahan: { terendah: 156.78, tertinggi: 156.78, rata: 156.78 },
+            afirmasi_sejahtera: { terendah: 201.58, tertinggi: 233.11, rata: 209.82 },
+            zonasi: { terendah: 218.16, tertinggi: 241.64, rata: 225.65 },
+            prestasi_luar: { terendah: 245.55, tertinggi: 275.95, rata: 252.81 }
+          },
+          "SMP Negeri 11 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 173.81, tertinggi: 219.40, rata: 202.92 },
+            radius: { terendah: 41, tertinggi: 357, rata: 157 },
+            disabilitas: { terendah: 41, tertinggi: 677, rata: 529 },
+            perpindahan: { terendah: 0.00, tertinggi: 0.00, rata: 0.00 },
+            afirmasi_sejahtera: { terendah: 192.14, tertinggi: 205.10, rata: 197.06 },
+            zonasi: { terendah: 204.09, tertinggi: 220.29, rata: 210.33 },
+            prestasi_luar: { terendah: 236.64, tertinggi: 248.64, rata: 241.61 }
+          },
+          "SMP Negeri 12 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 207.26, tertinggi: 233.21, rata: 215.41 },
+            radius: { terendah: 115, tertinggi: 311, rata: 201 },
+            disabilitas: { terendah: 115, tertinggi: 629, rata: 428 },
+            perpindahan: { terendah: 0.00, tertinggi: 0.00, rata: 0.00 },
+            afirmasi_sejahtera: { terendah: 189.79, tertinggi: 220.18, rata: 199.74 },
+            zonasi: { terendah: 212.38, tertinggi: 233.00, rata: 219.25 },
+            prestasi_luar: { terendah: 241.70, tertinggi: 260.28, rata: 247.31 }
+          },
+          "SMP Negeri 13 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 157.26, tertinggi: 203.46, rata: 186.31 },
+            radius: { terendah: 60, tertinggi: 299, rata: 203 },
+            disabilitas: { terendah: 684, tertinggi: 1533, rata: 1110 },
+            perpindahan: { terendah: 0.00, tertinggi: 0.00, rata: 0.00 },
+            afirmasi_sejahtera: { terendah: 194.31, tertinggi: 208.98, rata: 198.23 },
+            zonasi: { terendah: 202.82, tertinggi: 220.44, rata: 210.14 },
+            prestasi_luar: { terendah: 232.90, tertinggi: 241.45, rata: 237.44 }
+          },
+          "SMP Negeri 14 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 159.53, tertinggi: 231.31, rata: 193.47 },
+            radius: { terendah: 153, tertinggi: 446, rata: 360 },
+            disabilitas: { terendah: 452, tertinggi: 864, rata: 653 },
+            perpindahan: { terendah: 0.00, tertinggi: 0.00, rata: 0.00 },
+            afirmasi_sejahtera: { terendah: 185.95, tertinggi: 193.91, rata: 188.94 },
+            zonasi: { terendah: 198.23, tertinggi: 219.95, rata: 204.28 },
+            prestasi_luar: { terendah: 231.70, tertinggi: 246.70, rata: 236.73 }
+          },
+          "SMP Negeri 15 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 158.10, tertinggi: 245.83, rata: 191.23 },
+            radius: { terendah: 30, tertinggi: 470, rata: 300 },
+            disabilitas: { terendah: 459, tertinggi: 3447, rata: 1723 },
+            perpindahan: { terendah: 150.50, tertinggi: 150.50, rata: 150.50 },
+            afirmasi_sejahtera: { terendah: 188.23, tertinggi: 211.88, rata: 196.30 },
+            zonasi: { terendah: 203.51, tertinggi: 253.15, rata: 212.83 },
+            prestasi_luar: { terendah: 233.58, tertinggi: 253.24, rata: 239.66 }
+          },
+          "SMP Negeri 16 Yogyakarta": {
+            prestasi_bibit_unggul: { terendah: 217.62, tertinggi: 248.21, rata: 226.70 },
+            radius: { terendah: 199, tertinggi: 383, rata: 252 },
+            disabilitas: { terendah: 345, tertinggi: 1051, rata: 754 },
+            perpindahan: { terendah: 0.00, tertinggi: 0.00, rata: 0.00 },
+            afirmasi_sejahtera: { terendah: 202.83, tertinggi: 237.82, rata: 216.43 },
+            zonasi: { terendah: 221.21, tertinggi: 257.99, rata: 228.78 },
+            prestasi_luar: { terendah: 246.22, tertinggi: 255.26, rata: 249.92 }
+          },
+        };
+
+
+        // Inisialisasi Mapbox
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYW5hbmdnYWRpcGEiLCJhIjoiZjY2ZmQ0ZjI2MTkyN2EzYjJmNDZlMzkwOTNiOTAzNDMifQ.r1MvoZG-0CIfVBOLVaVHSA';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [110.367, -7.797],
+            zoom: 13,
+            minZoom: 11,
+            maxZoom: 18
+        });
+
+        // Variabel global untuk fitur tambahan
+        let radiusCenter = null;
+        let radiusMarker = null;
+        let selectingRadiusCenter = false;
+        let routeSource = null;
+        let routeLayer = null;
+        let routeStart = null;
+        let routeEnd = null;
+        let selectingRouteStart = false;
+        let selectingRouteEnd = false;
+        let startMarker = null;
+        let endMarker = null;
+
+        // Setelah peta selesai dimuat
+        map.on('load', function() {
+            // Tambahkan sumber data
+            map.addSource('places', {
+                type: 'geojson',
+                data: landmarks
+            });
+
+            // Bangun daftar lokasi di sidebar
+            buildLocationList(landmarks);
+
+            // Tambahkan marker untuk setiap sekolah
+            landmarks.features.forEach(function(marker, i) {
+                const el = document.createElement('div');
+                el.className = 'marker';
+                
+                if (marker.properties.icon) {
+                    el.style.backgroundImage = `url(${marker.properties.icon})`;
+                } else {
+                    el.style.backgroundImage = 'url(https://cdn-icons-png.flaticon.com/512/184/184674.png)';
+                }
+                
+                if (marker.properties.color) {
+                    el.style.filter = `drop-shadow(0 0 5px ${marker.properties.color})`;
+                }
+
+                // Tambahkan marker ke peta
+                new mapboxgl.Marker({
+                    element: el,
+                    anchor: 'bottom'
+                })
+                .setLngLat(marker.geometry.coordinates)
+                .addTo(map);
+
+                // Event listener untuk klik pada marker
+                el.addEventListener('click', function(e) {
+                    flyToStore(marker);
+                    createPopUp(marker);
+                    highlightListing(i);
+                    e.stopPropagation();
+                });
+            });
+
+            // Event listener untuk klik pada peta
+            map.on('click', function(e) {
+                const popUps = document.getElementsByClassName('mapboxgl-popup');
+                if (popUps[0]) popUps[0].remove();
+                
+                // Jika sedang dalam mode pemilihan titik pusat radius
+                if (selectingRadiusCenter) {
+                    // Simpan koordinat titik pusat
+                    radiusCenter = [e.lngLat.lng, e.lngLat.lat];
+                    
+                    // Tampilkan koordinat di UI
+                    document.getElementById('radius-coords').textContent = 
+                        `Titik pusat: ${e.lngLat.lng.toFixed(6)}, ${e.lngLat.lat.toFixed(6)}`;
+                    
+                    // Tambahkan marker di titik yang dipilih
+                    if (radiusMarker) {
+                        radiusMarker.remove();
+                    }
+                    
+                    radiusMarker = new mapboxgl.Marker({
+                        color: '#4361C9'
+                    })
+                    .setLngLat(radiusCenter)
+                    .addTo(map);
+                    
+                    // Gambar radius
+                    drawRadius();
+                    
+                    // Nonaktifkan mode pemilihan
+                    selectingRadiusCenter = false;
+                    map.getCanvas().style.cursor = '';
+                }
+                
+                // Jika sedang dalam mode pemilihan titik awal rute
+                if (selectingRouteStart) {
+                    routeStart = [e.lngLat.lng, e.lngLat.lat];
+                    document.getElementById('start-coords-display').textContent = 
+                        `Titik awal: ${e.lngLat.lng.toFixed(6)}, ${e.lngLat.lat.toFixed(6)}`;
+                    selectingRouteStart = false;
+                    map.getCanvas().style.cursor = '';
+                    
+                    // Hapus marker lama jika ada
+                    if (startMarker) {
+                        startMarker.remove();
+                    }
+                    // Tambahkan marker baru
+                    const el = document.createElement('div');
+                    el.className = 'route-point-marker start-marker';
+                    el.innerHTML = 'A';
+                    startMarker = new mapboxgl.Marker({
+                        element: el
+                    })
+                    .setLngLat(routeStart)
+                    .addTo(map);
+                    
+                    // Jika titik akhir sudah ada, hitung rute
+                    if (routeEnd) {
+                        calculateRoute();
+                    }
+                } 
+                // Jika sedang dalam mode pemilihan titik akhir rute
+                else if (selectingRouteEnd) {
+                    routeEnd = [e.lngLat.lng, e.lngLat.lat];
+                    document.getElementById('end-coords-display').textContent = 
+                        `Titik akhir: ${e.lngLat.lng.toFixed(6)}, ${e.lngLat.lat.toFixed(6)}`;
+                    selectingRouteEnd = false;
+                    map.getCanvas().style.cursor = '';
+                    
+                    if (endMarker) {
+                        endMarker.remove();
+                    }
+                    const el = document.createElement('div');
+                    el.className = 'route-point-marker end-marker';
+                    el.innerHTML = 'B';
+                    endMarker = new mapboxgl.Marker({
+                        element: el
+                    })
+                    .setLngLat(routeEnd)
+                    .addTo(map);
+                    
+                    // Jika titik awal sudah ada, hitung rute
+                    if (routeStart) {
+                        calculateRoute();
+                    }
+                }
+            });
+            
+            // Event listener untuk tombol kontrol
+            document.getElementById('controls-toggle').addEventListener('click', function() {
+                document.getElementById('controls-container').classList.toggle('active');
+            });
+            
+            document.getElementById('close-controls').addEventListener('click', function() {
+                document.getElementById('controls-container').classList.remove('active');
+            });
+            
+            // Event listener untuk tab
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const tab = this.dataset.tab;
+                    
+                    // Hapus kelas active dari semua tab
+                    document.querySelectorAll('.tab-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // Tambahkan kelas active ke tab yang dipilih
+                    this.classList.add('active');
+                    
+                    // Tampilkan panel yang sesuai
+                    if (tab === 'radius') {
+                        document.getElementById('radius-control').style.display = 'block';
+                        document.getElementById('route-control').style.display = 'none';
+                    } else if (tab === 'route') {
+                        document.getElementById('radius-control').style.display = 'none';
+                        document.getElementById('route-control').style.display = 'block';
+                    }
+                });
+            });
+            
+            // Event listener untuk fitur radius
+            document.getElementById('add-radius-center').addEventListener('click', function() {
+                selectingRadiusCenter = true;
+                map.getCanvas().style.cursor = 'crosshair';
+                document.getElementById('radius-coords').textContent = 'Klik di peta untuk menentukan titik pusat radius';
+            });
+            
+            document.getElementById('clear-radius').addEventListener('click', clearRadius);
+            
+            // Event listener untuk fitur rute
+            document.getElementById('select-start-point').addEventListener('click', function() {
+                selectingRouteStart = true;
+                selectingRouteEnd = false;
+                map.getCanvas().style.cursor = 'crosshair';
+                document.getElementById('start-coords-display').textContent = 'Klik di peta untuk memilih titik awal';
+            });
+            
+            document.getElementById('select-end-point').addEventListener('click', function() {
+                selectingRouteEnd = true;
+                selectingRouteStart = false;
+                map.getCanvas().style.cursor = 'crosshair';
+                document.getElementById('end-coords-display').textContent = 'Klik di peta untuk memilih titik akhir';
+            });
+            
+            document.getElementById('calculate-route').addEventListener('click', calculateRoute);
+            document.getElementById('clear-route').addEventListener('click', clearRoute);
+        });
+
+        // Fungsi untuk menerbangkan peta ke lokasi sekolah
+        function flyToStore(currentFeature) {
+            map.flyTo({
+                center: currentFeature.geometry.coordinates,
+                zoom: 15,
+                speed: 1.5,
+                curve: 1.5
+            });
+        }
+
+        // Fungsi untuk membuat popup informasi
+        function createPopUp(currentFeature) {
+            // Hapus popup sebelumnya
+            const popUps = document.getElementsByClassName('mapboxgl-popup');
+            if (popUps[0]) popUps[0].remove();
+
+            const sekolah = currentFeature.properties.english_name;
+            const dt = dayaTampungPerSekolah[sekolah];
+            const pg = passingGradePerSekolah[sekolah];
+            
+            // Siapkan konten untuk daya tampung
+            let dtHTML = '';
+            if (dt) {
+                dtHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Daya Tampung</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <div style="background: #f8faff; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 18px; color: #4361C9;">${dt.prestasi_bibit_unggul}</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Prestasi Unggul</div>
+                            </div>
+                            <div style="background: #f8faff; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 18px; color: #4361C9;">${dt.radius}</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Radius</div>
+                            </div>
+                            <div style="background: #f8faff; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 18px; color: #4361C9;">${dt.disabilitas}</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Disabilitas</div>
+                            </div>
+                            <div style="background: #f8faff; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 18px; color: #4361C9;">${dt.perpindahan}</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Perpindahan</div>
+                            </div>
+                            <div style="background: #f8faff; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 18px; color: #4361C9;">${dt.afirmasi_sejahtera}</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Afirmasi</div>
+                            </div>
+                            <div style="background: #f8faff; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 18px; color: #4361C9;">${dt.zonasi}</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Zonasi</div>
+                            </div>
+                            <div style="background: #f8faff; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 18px; color: #4361C9;">${dt.prestasi_luar}</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Prestasi Luar</div>
+                            </div>
+                            <div style="background: #edf3ff; padding: 10px; border-radius: 8px; text-align: center; grid-column: span 2;">
+                                <div style="font-weight: 700; font-size: 22px; color: #4361C9;">${dt.total}</div>
+                                <div style="font-size: 13px; color: #4361C9;">Total Daya Tampung</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Siapkan konten untuk passing grade
+            let pgHTML = '';
+            if (pg) {
+                pgHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Passing Grade PPDB 2024</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <div style="background: #fff9f9; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 16px; color: #e74c3c;">Prestasi Unggul</div>
+                                <div style="font-size: 14px; margin-top: 5px;">Terendah: ${pg.prestasi_bibit_unggul.terendah}</div>
+                                <div style="font-size: 14px;">Tertinggi: ${pg.prestasi_bibit_unggul.tertinggi}</div>
+                                <div style="font-size: 14px;">Rata: ${pg.prestasi_bibit_unggul.rata}</div>
+                            </div>
+                            <div style="background: #fff9f9; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 16px; color: #e74c3c;">Radius</div>
+                                <div style="font-size: 14px; margin-top: 5px;">Terendah: ${pg.radius.terendah}</div>
+                                <div style="font-size: 14px;">Tertinggi: ${pg.radius.tertinggi}</div>
+                                <div style="font-size: 14px;">Rata: ${pg.radius.rata}</div>
+                            </div>
+                            <div style="background: #fff9f9; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 16px; color: #e74c3c;">Disabilitas</div>
+                                <div style="font-size: 14px; margin-top: 5px;">Terendah: ${pg.disabilitas.terendah}</div>
+                                <div style="font-size: 14px;">Tertinggi: ${pg.disabilitas.tertinggi}</div>
+                                <div style="font-size: 14px;">Rata: ${pg.disabilitas.rata}</div>
+                            </div>
+                            <div style="background: #fff9f9; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 16px; color: #e74c3c;">Perpindahan</div>
+                                <div style="font-size: 14px; margin-top: 5px;">Terendah: ${pg.perpindahan.terendah}</div>
+                                <div style="font-size: 14px;">Tertinggi: ${pg.perpindahan.tertinggi}</div>
+                                <div style="font-size: 14px;">Rata: ${pg.perpindahan.rata}</div>
+                            </div>
+                            <div style="background: #fff9f9; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 16px; color: #e74c3c;">Afirmasi</div>
+                                <div style="font-size: 14px; margin-top: 5px;">Terendah: ${pg.afirmasi_sejahtera.terendah}</div>
+                                <div style="font-size: 14px;">Tertinggi: ${pg.afirmasi_sejahtera.tertinggi}</div>
+                                <div style="font-size: 14px;">Rata: ${pg.afirmasi_sejahtera.rata}</div>
+                            </div>
+                            <div style="background: #fff9f9; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 16px; color: #e74c3c;">Zonasi</div>
+                                <div style="font-size: 14px; margin-top: 5px;">Terendah: ${pg.zonasi.terendah}</div>
+                                <div style="font-size: 14px;">Tertinggi: ${pg.zonasi.tertinggi}</div>
+                                <div style="font-size: 14px;">Rata: ${pg.zonasi.rata}</div>
+                            </div>
+                            <div style="background: #fff9f9; padding: 10px; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 700; font-size: 16px; color: #e74c3c;">Prestasi Luar</div>
+                                <div style="font-size: 14px; margin-top: 5px;">Terendah: ${pg.prestasi_luar.terendah}</div>
+                                <div style="font-size: 14px;">Tertinggi: ${pg.prestasi_luar.tertinggi}</div>
+                                <div style="font-size: 14px;">Rata: ${pg.prestasi_luar.rata}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #999; text-align: center; margin-top: 5px;">
+                        Sumber: Dinas Pendidikan Kota Yogyakarta
+                    </div>
+                `;
+            }
+
+            // Konten popup
+            const popupContent = `
+                <div>
+                    <h3>${sekolah}</h3>
+                    <p style="padding: 10px 15px; margin-bottom: 10px; background: #f8f9ff; border-radius: 8px;">
+                        <i class="fas fa-map-marker-alt"></i> ${currentFeature.properties.address}
+                    </p>
+                    ${currentFeature.properties.gambar ? 
+                        `<img src="${currentFeature.properties.gambar}" alt="${sekolah}" style="width:100%; max-height:200px; object-fit:cover; border-radius:8px; margin-bottom:15px;">` : ''}
+                    ${dtHTML}
+                    ${pgHTML}
+                    <a href="${currentFeature.properties.url}" target="_blank" style="display:block; text-align:center; background:#4361C9; color:white; padding:10px; border-radius:8px; text-decoration:none; margin-top:10px;">
+                        <i class="fas fa-external-link-alt"></i> Kunjungi Website Sekolah
+                    </a>
+                </div>
+            `;
+
+            // Buat popup
+            new mapboxgl.Popup({ closeOnClick: true, offset: 25 })
+                .setLngLat(currentFeature.geometry.coordinates)
+                .setHTML(popupContent)
+                .addTo(map);
+        }
+
+
+        // Fungsi untuk membangun daftar lokasi di sidebar
+        function buildLocationList(data) {
+            const listings = document.getElementById('listings');
+            listings.innerHTML = '';
+
+            data.features.forEach(function(feature, i) {
+                const listing = document.createElement('div');
+                listing.className = 'item';
+                listing.id = 'listing-' + i;
+                listing.innerHTML = `
+                    <div class="title">
+                        <i class="fas fa-map-marker-alt" style="color: ${feature.properties.color || '#4361C9'}"></i> 
+                        ${feature.properties.english_name}
+                    </div>
+                    <div class="address">${feature.properties.address}</div>
+                `;
+
+                listings.appendChild(listing);
+
+                // Event listener untuk klik pada daftar
+                listing.addEventListener('click', function() {
+                    flyToStore(feature);
+                    createPopUp(feature);
+                    highlightListing(i);
+                });
+            });
+        }
+
+        // Fungsi untuk menyorot item di sidebar
+        function highlightListing(index) {
+            const activeItem = document.getElementsByClassName('active');
+            if (activeItem[0]) {
+                activeItem[0].classList.remove('active');
+            }
+            const listing = document.getElementById('listing-' + index);
+            listing.classList.add('active');
+        }
+
+        // Fungsi untuk menggambar radius
+        function drawRadius() {
+            if (!radiusCenter) return;
+            
+            const radiusKm = parseFloat(document.getElementById('radius').value) || 3;
+            
+            // Hapus radius sebelumnya jika ada
+            clearRadius(true);
+
+            // Buat lingkaran GeoJSON
+            const circle = createGeoJSONCircle(radiusCenter, radiusKm);
+
+            // Tambahkan sumber data untuk lingkaran
+            map.addSource('radius-circle', {
+                type: 'geojson',
+                data: circle
+            });
+
+            // Tambahkan layer lingkaran
+            map.addLayer({
+                id: 'radius-circle',
+                type: 'fill',
+                source: 'radius-circle',
+                paint: {
+                    'fill-color': '#4361C9',
+                    'fill-opacity': 0.2
+                }
+            });
+
+            // Tambahkan layer garis tepi
+            map.addLayer({
+                id: 'radius-circle-border',
+                type: 'line',
+                source: 'radius-circle',
+                paint: {
+                    'line-color': '#4361C9',
+                    'line-width': 2
+                }
+            });
+        }
+
+        // Fungsi untuk menghapus radius
+        function clearRadius(preserveCenter = false) {
+            // Hapus layer dan sumber radius jika ada
+            if (map.getLayer('radius-circle')) {
+                map.removeLayer('radius-circle');
+            }
+            if (map.getLayer('radius-circle-border')) {
+                map.removeLayer('radius-circle-border');
+            }
+            if (map.getSource('radius-circle')) {
+                map.removeSource('radius-circle');
+            }
+            
+            // Hapus marker jika ada
+            if (radiusMarker && !preserveCenter) {
+                radiusMarker.remove();
+                radiusMarker = null;
+                radiusCenter = null;
+                document.getElementById('radius-coords').textContent = 'Titik pusat belum dipilih';
+            }
+        }
+
+        // Fungsi untuk membuat lingkaran GeoJSON
+        function createGeoJSONCircle(center, radiusInKm, points = 64) {
+            const coords = {
+                latitude: center[1],
+                longitude: center[0]
+            };
+
+            const km = radiusInKm;
+            const ret = [];
+            const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
+            const distanceY = km / 110.574;
+
+            for (let i = 0; i < points; i++) {
+                const theta = (i / points) * (2 * Math.PI);
+                const x = distanceX * Math.cos(theta);
+                const y = distanceY * Math.sin(theta);
+                ret.push([coords.longitude + x, coords.latitude + y]);
+            }
+            ret.push(ret[0]); // Tutup poligon
+
+            return {
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [ret]
+                }
+            };
+        }
+
+        // Fungsi untuk menghitung rute
+        function calculateRoute() {
+            if (!routeStart || !routeEnd) {
+                alert('Silakan tentukan titik awal dan titik akhir terlebih dahulu!');
+                return;
+            }
+
+            // Hapus rute sebelumnya jika ada
+            clearRoute(true);
+
+            // Buat permintaan ke Directions API
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${routeStart[0]},${routeStart[1]};${routeEnd[0]},${routeEnd[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.routes && data.routes.length > 0) {
+                        const route = data.routes[0].geometry;
+                        const distance = (data.routes[0].distance / 1000).toFixed(1); // dalam km
+                        const duration = Math.round(data.routes[0].duration / 60); // dalam menit
+                        
+                        // Tampilkan informasi rute
+                        document.getElementById('route-distance').textContent = `${distance} km`;
+                        document.getElementById('route-duration').textContent = `${duration} menit`;
+                        document.getElementById('route-info').classList.add('active');
+                        
+                        // Tambahkan sumber data untuk rute
+                        map.addSource('route', {
+                            type: 'geojson',
+                            data: {
+                                type: 'Feature',
+                                properties: {},
+                                geometry: route
+                            }
+                        });
+
+                        // Tambahkan layer untuk rute
+                        map.addLayer({
+                            id: 'route',
+                            type: 'line',
+                            source: 'route',
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': '#FF0000',
+                                'line-width': 4,
+                                'line-opacity': 0.7
+                            }
+                        });
+                        
+                        // Simpan referensi ke layer dan sumber
+                        routeSource = 'route';
+                        routeLayer = 'route';
+                        
+                        // Zoom ke rute
+                        const bounds = new mapboxgl.LngLatBounds();
+                        route.coordinates.forEach(coord => {
+                            bounds.extend(coord);
+                        });
+                        map.fitBounds(bounds, {
+                            padding: 50,
+                            maxZoom: 14
+                        });
+                    } else {
+                        alert('Tidak dapat menemukan rute antara titik yang dipilih!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error calculating route:', error);
+                    alert('Terjadi kesalahan saat menghitung rute!');
+                });
+        }
+
+        // Fungsi untuk menghapus rute
+        function clearRoute(preservePoints = false) {
+            // Hapus layer rute jika ada
+            if (routeLayer && map.getLayer(routeLayer)) {
+                map.removeLayer(routeLayer);
+            }
+            
+            // Hapus sumber rute jika ada
+            if (routeSource && map.getSource(routeSource)) {
+                map.removeSource(routeSource);
+            }
+            
+            if (!preservePoints) {
+                // Hapus marker titik rute
+                if (startMarker) {
+                    startMarker.remove();
+                    startMarker = null;
+                }
+                if (endMarker) {
+                    endMarker.remove();
+                    endMarker = null;
+                }
+                
+                // Reset variabel
+                routeStart = null;
+                routeEnd = null;
+                
+                // Reset tampilan koordinat
+                document.getElementById('start-coords-display').textContent = 'Belum dipilih';
+                document.getElementById('end-coords-display').textContent = 'Belum dipilih';
+            }
+            
+            // Nonaktifkan mode pemilihan
+            selectingRouteStart = false;
+            selectingRouteEnd = false;
+            map.getCanvas().style.cursor = '';
+            
+            // Sembunyikan info rute
+            document.getElementById('route-info').classList.remove('active');
+        }
+
+        // Fungsi pencarian
+        document.getElementById('search-school').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.listings .item');
+            
+            items.forEach(item => {
+                const schoolName = item.querySelector('.title').textContent.toLowerCase();
+                if (schoolName.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Update radius saat nilai diubah
+        document.getElementById('radius').addEventListener('input', function() {
+            if (radiusCenter) {
+                drawRadius();
+            }
+        });
+    </script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+</html>
